@@ -39,8 +39,14 @@ class Solution:
                 if max_prob[next_node] < prob * next_prob:
                     max_prob[next_node] = prob * next_prob
                     heapq.heappush(pq, (-max_prob[next_node], next_node))
+
         
         return ans
+    
+    def test():
+        print('hello')
+
+        
 
 # Test case
 if __name__ == "__main__":
@@ -53,3 +59,5 @@ if __name__ == "__main__":
     
     result = solution.maxProbability(n, edges, succProb, start_node, end_node)
     print(f'Maximum Probability from {start_node} to {end_node}: {result}')
+
+ 
