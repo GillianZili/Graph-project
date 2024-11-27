@@ -1,20 +1,20 @@
 import networkx as nx
 import pandas as pd
 import matplotlib.pyplot as plt
+from data_cleaning import load_data
 
 
-
-def load_data(file_path):  
-    # Open the file and parse the edge list
-    with open(file_path, "r") as Data:
-        next(Data, None)  # Skip the first line (header)
-        friends = nx.parse_edgelist(
-            Data, 
-            delimiter=',', 
-            create_using=nx.Graph(), 
-            nodetype = str
-        )
-    return friends
+# def load_data(file_path):  
+#     # Open the file and parse the edge list
+#     with open(file_path, "r") as Data:
+#         next(Data, None)  # Skip the first line (header)
+#         friends = nx.parse_edgelist(
+#             Data, 
+#             delimiter=',', 
+#             create_using=nx.Graph(), 
+#             nodetype = str
+#         )
+#     return friends
 
 
 def degree_centrality(friends):

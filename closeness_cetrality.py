@@ -2,6 +2,7 @@ import networkx as nx
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
+from data_cleaning import load_data
 
 # from try1 import load_data, degree_centrality
 
