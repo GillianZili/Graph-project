@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import networkx as nx
 import random
+import csv
 '''
 We filter out people with common interests, and extract their connections from the raw data.
 '''
@@ -21,10 +22,29 @@ def node_filter(friends):
     low_degree_sample = random.sample(low_degree_nodes, min(len(low_degree_nodes), 400))    
     selected_nodes = set(high_degree_sample + mid_degree_sample + low_degree_sample)
     selected_nodes = set(map(int, selected_nodes))
+
+    print(f'high: {high_degree_sample}')
     return selected_nodes
 
+
+
+def save_selected_nodes_to_csv(selected_nodes, filename="selected_nodes.csv", limit = 50):
+    '''Used for shared interests graph'''
+    selected_nodes = list(selected_nodes)
+
+    if limit is not None:
+        selected_nodes = selected_nodes[:limit]
+
+    with open(filename, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Node"]) 
+        for node in selected_nodes:
+            writer.writerow([node])
+    print(f"Selected nodes saved to {filename}")
+
+
 def edge_filter(filter_set,name):
-    filtered_edges = friend_all[friend_all.iloc[:, 0].isin(filter_set) | friend_all.iloc[:, 1].isin(filter_set)]
+    filtered_edges = friend_all[friend_all.iloc[:, 0].isin(filter_set) & friend_all.iloc[:, 1].isin(filter_set)]
     file_path = f'filtered_edges_{name}.csv'
     filtered_edges.to_csv(file_path, index=False)
     return file_path
@@ -59,7 +79,8 @@ def main():
     # filter the people who have the same interest(#1)
     interest_mle = set(interest_tag[interest_tag.iloc[:, 1] == 1].iloc[:, 0])
     friends_interest_in_mle_path=edge_filter(interest_mle,'interest_mle')
-    friends_interest_in_mle = load_data(friends_interest_in_mle_path)  
+    friends_interest_in_mle = load_data(friends_interest_in_mle_path)
+    save_selected_nodes_to_csv(strat_sampling)
     degree_data(friends_interest_in_mle)
 
-main()
+# main()

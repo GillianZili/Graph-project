@@ -125,3 +125,6 @@ top_people = degree_centrality(friends)
 
 subgraph = friends.subgraph(top_people)
 print(betweenness_centrality(subgraph))
+
+
+print('hello')

@@ -153,7 +153,7 @@ def create_subgraph(friends, top_people):
 file_path = 'filtered_edges.csv'
 friends = load_data(file_path)  # Load the data
 top_people = degree_centrality(friends)
-
+create_graph(friends, top_people)
 # node_color = categorize_degree_centrality(top_nodes)
 subgraph = friends.subgraph(top_people)
 # plot_categorized_heatmap(friends, node_color) # include all nodes

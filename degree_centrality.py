@@ -4,33 +4,16 @@ import matplotlib.pyplot as plt
 from data_cleaning import load_data
 
 
-# def load_data(file_path):  
-#     # Open the file and parse the edge list
-#     with open(file_path, "r") as Data:
-#         next(Data, None)  # Skip the first line (header)
-#         friends = nx.parse_edgelist(
-#             Data, 
-#             delimiter=',', 
-#             create_using=nx.Graph(), 
-#             nodetype = str
-#         )
-#     return friends
-
-
 def degree_centrality(friends):
     deg_centrality = nx.degree_centrality(friends)
-    sorted_deg_centrality = sorted(deg_centrality.items(), key=lambda x: x[1], reverse=True)[:200]
+    print("Graph created with", friends.number_of_nodes(), "nodes and", friends.number_of_edges(), "edges.")
+    sorted_deg_centrality = sorted(deg_centrality.items(), key=lambda x: x[1], reverse=True)[:100]   
    
+    # top_degree_centrality = pd.DataFrame(sorted_deg_centrality, columns=['Name', 'Degree Centrality'])
+    # top_degree_centrality.to_csv('top_degree_centrality.csv', index=False)
 
-   
-    top_degree_centrality = pd.DataFrame(sorted_deg_centrality, columns=['Name', 'Degree Centrality'])
-    top_degree_centrality.to_csv('top_degree_centrality.csv', index=False)
-  
+    return dict(sorted_deg_centrality)
 
-
-    return nx.degree_centrality(friends) # used for heatmap
-   
-    # return top_degree_centrality['Name'].tolist() #必留
     
 
 def categorize_degree_centrality(deg_centrality):
@@ -42,21 +25,24 @@ def categorize_degree_centrality(deg_centrality):
     """
    
     categories = {
-        'red': (0.01, 0.1),      
-        'lightgreen': (0.001, 0.01),
-        'lightblue': (0.0006, 0.001),
-        'gray': (0, 0.001)
+        'red': (0.1, 1),      
+        'green': (0.04, 0.1),
+        'blue': (0.02, 0.04),
+        'gray': (0, 0.02)
     }
 
     
     # Categorize nodes based on centrality
     node_colors = {}
     for node, centrality in deg_centrality.items():
+        print(f"Node: {node}, Centrality: {centrality}")
         for color, (low, high) in categories.items():
             if low <= centrality < high:
                 node_colors[node] = color
+                categorized = True
                 break
-
+        if not categorized:
+            print(f"Node {node} with centrality {centrality} did not fit any category.")
     return node_colors
 
 
@@ -66,23 +52,23 @@ def plot_categorized_heatmap(friends, node_colors):
     """
     
     
-    colors = [node_colors.get(node) for node in friends.nodes()]
+    colors = [node_colors.get(node, 'gray') for node in friends.nodes()]
     sizes = [
-        500 if color == 'red' else
-        250 if color == 'lightgreen' else
-        100 if color == 'lightblue' else
+        100 if color == 'red' else
+        30 if color == 'green' else
+        20 if color == 'blue' else
         5  # Default size for other nodes
         for color in colors
     ]
 
-    plt.figure(figsize=(12, 10))
-    pos = nx.spring_layout(friends)
+    fig, ax = plt.subplots(figsize=(10, 8))
+    pos = nx.spring_layout(friends, seed = 42)
     nx.draw(
         friends,
         pos,
         with_labels=False,
         node_color=colors,
-        node_size= sizes, #[100 if color in ['red', 'lightgreen', 'lightblue'] else 1 for color in colors],
+        node_size= sizes, 
         font_size=10,
         font_weight='bold',
         edge_color='white'
@@ -90,22 +76,21 @@ def plot_categorized_heatmap(friends, node_colors):
 
     # Add legend
     legend_labels = {
-        'red': 'above 0.01',  
-        'green': '0.001 - 0.01',
-        'blue': '0.0006 - 0.001',
-        'gray': 'below 0.0006'      
+        'red': '0.01 - 1',      
+        'green': '0.005 - 0.01',
+        'blue': '0.001 - 0.005',
+        'gray': '0 - 0.001'   
     }
 
     for color, label in legend_labels.items():
-        plt.scatter([], [], c=color, label=label)
-    plt.legend(scatterpoints=1, frameon=True, labelspacing=1, title="Degree Centrality Ranges")
+        ax.scatter([], [], c=color, label=label)
 
-    # Show the plot
-    plt.title("Categorized Heat Map of Nodes by Degree Centrality", fontsize=16)
+    ax.set_title(" Heat Map of for 3000 edges (deg cent)", fontsize=16)
+    ax.legend(scatterpoints=1, frameon=True, labelspacing=1, title="Degree Centrality Ranges")
     plt.show()
 
 
-def create_graph(friends, top_nodes):
+def create_graph(friends):
  
     G = nx.Graph()
     G.add_edges_from(friends.edges())
@@ -117,9 +102,11 @@ def create_graph(friends, top_nodes):
     nx.draw(
         G,
         pos,
-        with_labels= False,          
-        node_size = [30 if node in top_nodes else 3 for node in friends.nodes()],                 # Node size
-        node_color = ['red' if node in top_nodes else 'lightgray' for node in friends.nodes()],        # Node color
+        with_labels= False,    
+        node_size = 10,
+        node_color = 'lightgray',      
+        # node_size = [30 if node in top_nodes else 3 for node in friends.nodes()],                 # Node size
+        # node_color = ['red' if node in top_nodes else 'lightgray' for node in friends.nodes()],        # Node color
         font_size=10,                  
         font_weight='bold',           
         edge_color='white'            
@@ -129,14 +116,13 @@ def create_graph(friends, top_nodes):
 
 
 
-
-file_path = 'filtered_edges.csv'
-friends = load_data(file_path)  # Load the data
+file_path = 'filtered_edges_startified_sampling.csv'
+friends = load_data(file_path)  
 top_nodes = degree_centrality(friends)
-node_colors = categorize_degree_centrality(top_nodes) # filter out for top people
-subgraph = friends.subgraph(top_nodes)
-plot_categorized_heatmap(subgraph, node_colors)
+print(top_nodes)
+# node_colors = categorize_degree_centrality(top_nodes) # filter out for top people
+# plot_categorized_heatmap(friends, node_colors)
 
 
-# create_graph(friends, top_nodes) 
-
+# create_graph(friends) 
+# subgraph = friends.subgraph(top_nodes)
