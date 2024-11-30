@@ -23,7 +23,9 @@ def node_filter(friends):
     selected_nodes = set(high_degree_sample + mid_degree_sample + low_degree_sample)
     selected_nodes = set(map(int, selected_nodes))
 
-    print(f'high: {high_degree_sample}')
+    # print(f'high: {high_degree_sample}')
+    # print(f'mid: {mid_degree_sample}')
+    # print(f'low: {low_degree_sample}')
     return selected_nodes
 
 
@@ -41,6 +43,7 @@ def save_selected_nodes_to_csv(selected_nodes, filename="selected_nodes.csv", li
         for node in selected_nodes:
             writer.writerow([node])
     print(f"Selected nodes saved to {filename}")
+    return selected_nodes
 
 
 def edge_filter(filter_set,name):
@@ -73,6 +76,7 @@ def degree_data(friends):
 
 def main():
     # filter the people by stratified sampling
+    
     strat_sampling=node_filter(load_data('edges.csv'))
     edge_filter(strat_sampling,'startified_sampling')
     
@@ -81,6 +85,10 @@ def main():
     friends_interest_in_mle_path=edge_filter(interest_mle,'interest_mle')
     friends_interest_in_mle = load_data(friends_interest_in_mle_path)
     save_selected_nodes_to_csv(strat_sampling)
+    
+    target_nodes = save_selected_nodes_to_csv(strat_sampling)
+    target_edges_file = edge_filter(target_nodes,'target_edges_file')
+
     degree_data(friends_interest_in_mle)
 
-# main()
+main()

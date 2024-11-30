@@ -6,14 +6,14 @@ from matplotlib.collections import LineCollection
 from data_cleaning import load_data, node_filter
 
 
-# def degree_centrality(friends):
-#     deg_centrality = nx.degree_centrality(friends)
-#     sorted_deg_centrality = sorted(deg_centrality.items(), key=lambda x: x[1], reverse=True)
-#     top_degree_centrality = pd.DataFrame(sorted_deg_centrality, columns=['Name', 'Degree Centrality'])
+def degree_centrality(friends):
+    deg_centrality = nx.degree_centrality(friends)
+    sorted_deg_centrality = sorted(deg_centrality.items(), key=lambda x: x[1], reverse=True)
+    top_degree_centrality = pd.DataFrame(sorted_deg_centrality, columns=['Name', 'Degree Centrality'])
     
-#     # print(deg_centrality)
-#     # return nx.degree_centrality(friends)
-#     return top_degree_centrality['Name'].tolist() #必留
+    # print(deg_centrality)
+    # return nx.degree_centrality(friends)
+    return top_degree_centrality['Name'].tolist() #必留
 
 
 def closeness_centrality(friends, top_people):
@@ -172,7 +172,7 @@ subgraph = friends.subgraph(top_nodes)
 print(random_node(friends))
 _, mid, low = random_node(friends)
 
-plot_n_degree_connections(friends, mid, 1)
-plot_n_degree_connections(friends, low, 1)
+# plot_n_degree_connections(friends, mid, 1)
+# plot_n_degree_connections(friends, low, 1)
 
 # plot_n_degree_connections(subgraph, low, 1) #edge = 2 已經可以連結到大部分的點

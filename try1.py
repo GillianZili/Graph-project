@@ -1,162 +1,191 @@
 import networkx as nx
-import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from data_cleaning import load_data
 
 
 
-def load_data(file_path):  
-    # Open the file and parse the edge list
-    with open(file_path, "r") as Data:
-        next(Data, None)  # Skip the first line (header)
-        friends = nx.parse_edgelist(
-            Data, 
-            delimiter=',', 
-            create_using=nx.Graph(), 
-            nodetype = str
-        )
-    return friends
+def load_data(node_interest_file, edge_file):
 
+    # Load node-interest data
+    node_interest_df = pd.read_csv(node_interest_file)
+    nodes_with_interests = list(zip(node_interest_df['Node'], node_interest_df['Random_Variable']))
 
-def degree_centrality(friends):
-   
-    deg_centrality = nx.degree_centrality(friends)
-    sorted_deg_centrality = sorted(deg_centrality.items(), key=lambda x: x[1], reverse=True)[:2000]
-    top_degree_centrality = pd.DataFrame(sorted_deg_centrality, columns=['Name', 'Degree Centrality'])
-    
- 
-    # return nx.degree_centrality(friends) # used for heatmap
-    
-    return top_degree_centrality['Name'].tolist() #必留
+    # Load edge data
+    edge_df = pd.read_csv(edge_file)
+    edges = list(zip(edge_df.iloc[:, 0], edge_df.iloc[:, 1]))
 
-
-def categorize_degree_centrality(deg_centrality):
-    """
-    Categorize nodes by degree centrality into 5 equal ranges and assign colors.
-
-    Returns:
-    - node_colors: Dictionary of node -> color based on degree centrality ranges.
-    """
-   
-    categories = {
-        'red': (0.01, 0.1),      
-        'lightgreen': (0.001, 0.01),
-        'lightblue': (0.0006, 0.001),
-        'gray': (0, 0.001)
-    }
-
-    
-    # Categorize nodes based on centrality
-    node_colors = {}
-    for node, centrality in deg_centrality.items():
-        for color, (low, high) in categories.items():
-            if low <= centrality < high:
-                node_colors[node] = color
-                break
-
-    return node_colors
-
-
-def plot_categorized_heatmap(friends, node_colors):
-    """
-    Plot a graph with nodes colored by categorized degree centrality.
-    """
-    
-
-    # deg_centrality = degree_centrality(friends)
-    # node_colors = categorize_degree_centrality(deg_centrality)
-    
-    colors = [node_colors.get(node) for node in friends.nodes()]
-
-    # Step 4: Plot the graph
-    plt.figure(figsize=(12, 10))
-    pos = nx.spring_layout(friends)  # Layout for positioning nodes
-    nx.draw(
-        friends,
-        pos,
-        with_labels=False,
-        node_color=colors,
-        node_size= [30 if color in ['red', 'lightgreen', 'lightblue'] else 1 for color in colors],
-        font_size=10,
-        font_weight='bold',
-        edge_color='white'
-    )
-
-    # Add legend
-    legend_labels = {
-        'red': 'above 0.01',   # Highest group
-        'green': '0.001 - 0.01',
-        'blue': '0.0006 - 0.001',
-        'gray': 'below 0.0006'      # Lowest group
-    }
-
-    for color, label in legend_labels.items():
-        plt.scatter([], [], c=color, label=label)
-    plt.legend(scatterpoints=1, frameon=True, labelspacing=1, title="Degree Centrality Ranges")
-
-    # Show the plot
-    plt.title("Categorized Heat Map of Nodes by Degree Centrality", fontsize=16)
-    plt.show()
-
-
-
-
-
-
-def create_graph(friends, top_nodes):
- 
     G = nx.Graph()
-    G.add_edges_from(friends.edges())
+    for node, interest in nodes_with_interests:
+        G.add_node(node, interest=interest)
+
+    # Add edges
+    G.add_edges_from(edges)
+    return G, nodes_with_interests, edges
+    
+
+
+def connect_groups(G, nodes_with_interests):
+    """
+    Connects groups of nodes based on specific rules.
+
+    Args:
+        G (networkx.Graph): The input graph.
+        nodes_with_interests (list of tuples): List of (node, interest) pairs.
+    """
+    # Group nodes by their interest
+    groups = {i: [] for i in range(7)}  # Assuming interests range from 0 to 6
+    for node, interest in nodes_with_interests:
+        groups[interest].append(node)
+
+    # Define group connection rules
+    group_connections = {
+        3: [0, 1],
+        4: [1, 2],
+        5: [0, 2],
+        6: [3, 4, 5]
+    }
+
+    # Add edges based on the rules
+    for group, connected_groups in group_connections.items():
+        for connected_group in connected_groups:
+            # Connect all nodes in the current group to all nodes in the connected group
+            for node1 in groups[group]:
+                for node2 in groups[connected_group]:
+                    if not G.has_edge(node1, node2):  # Avoid duplicate edges
+                        G.add_edge(node1, node2)
+
+# def calculate_betweenness_with_interests(nodes_with_interests, edges):
+    # """
+    # Calculates betweenness centrality for a graph where nodes have interests.
+    
+    # Args:
+    #     nodes_with_interests (list of tuples): A list where each tuple is (node, interest).
+    #     edges (list of tuples): A list of edges as (node1, node2).
+        
+    # Returns:
+    #     dict: A dictionary where keys are node interests (0-6) and values are lists of tuples
+    #           (node, betweenness centrality).
+    # """
+    # # Create the graph
+    # G = nx.Graph()
+    
+    # # Add nodes with interests
+    # for node, interest in nodes_with_interests:
+    #     G.add_node(node, interest=interest)
+    
+    # # Add edges
+    # G.add_edges_from(edges)
+    
+    # # Calculate betweenness centrality
+    # betweenness = nx.betweenness_centrality(G)
+
+    # # Group centrality scores by interests
+    # interests_centrality = {i: [] for i in range(7)}  # Assuming interests are 0-6
+    # for node, centrality in betweenness.items():
+    #     interest = G.nodes[node].get('interest', None)
+    #     if interest is not None:
+    #         interests_centrality[interest].append((node, centrality))
 
    
-    plt.figure(figsize=(10, 8))
-    pos = nx.spring_layout(G) 
+
+    # return interests_centrality
+
+
+def main(node_interest_file, edge_file):
+    # Load data from CSV files
+    nodes_with_interests, edges = load_data(node_interest_file, edge_file)
+
+    # Create the graph
+    G = nx.Graph()
+
+    # Add nodes with interests
+    G.add_nodes_from([(node, {'interest': interest}) for node, interest in nodes_with_interests])
+
+    # Add edges from the edge file
+    G.add_edges_from(edges)
+
+    # Connect groups based on specified rules
+    connect_groups(G, nodes_with_interests)
+
+    # Calculate betweenness centrality grouped by interests
+    betweenness = nx.betweenness_centrality(G)
+
+    # Group centrality scores by interests
+    interests_centrality = {i: [] for i in range(7)}  # Assuming interests are 0-6
+    for node, centrality in betweenness.items():
+        interest = G.nodes[node].get('interest', None)
+        if interest is not None:
+            interests_centrality[interest].append((node, centrality))
+
+    # Print results
+    for interest, centralities in interests_centrality.items():
+        print(f"Interest {interest}:")
+        for node, centrality in centralities:
+            print(f"  Node {node}: Betweenness Centrality = {centrality:.4f}")
+
+ 
+
+# Example usage
+node_interest_file = '/Users/tzuying/Desktop/CS5002_final project/selected_nodes_intetests.csv'  # Replace with your actual file path
+edge_file = '/Users/tzuying/Desktop/CS5002_final project/selected_nodes_edges_file.csv'  # Replace with your actual file path
+
+G, _, _ = load_data(node_interest_file, edge_file)
+# main(node_interest_file, edge_file)
+
+
+
+def visualize_betweenness_centrality(graph):
+    """
+    Visualizes a graph with nodes and edges highlighted based on betweenness centrality.
     
-    nx.draw(
-        G,
+    Args:
+        graph (networkx.Graph): The input graph.
+    """
+    # Calculate betweenness centrality for nodes and edges
+    node_centrality = nx.betweenness_centrality(graph)
+
+    # Normalize centrality values for visualization
+    max_node_centrality = max(node_centrality.values()) if node_centrality else 1
+
+    # Scale node size and color based on centrality
+    node_sizes = [500 * (node_centrality[node] / max_node_centrality + 0.1) for node in graph.nodes()]
+    node_colors = [node_centrality[node] for node in graph.nodes()]
+
+    # Draw the graph
+    plt.figure(figsize=(12, 8))
+    pos = nx.spring_layout(graph, seed=42)
+
+    # Draw edges in light gray
+    nx.draw_networkx_edges(
+        graph,
         pos,
-        with_labels= False,          
-        node_size = [10 if node in top_nodes else 3 for node in friends.nodes()],                 # Node size
-        node_color = ['red' if node in top_nodes else 'lightblue' for node in friends.nodes()],        # Node color
-        font_size=10,                  
-        font_weight='bold',           
-        edge_color='white'            
+        edge_color="gray",
+        width=1.0
     )
-    plt.title("Nodes-Edges Graph", fontsize=16)
+
+    # Draw nodes
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        node_color=node_colors,
+        node_size=node_sizes,
+        cmap=plt.cm.Reds
+    )
+
+    # Add colorbar for node betweenness centrality
+    ax = plt.gca()  # Get current axes
+    cbar_node = plt.colorbar(
+        plt.cm.ScalarMappable(cmap=plt.cm.Reds, norm=plt.Normalize(vmin=min(node_centrality.values()), vmax=max_node_centrality)),
+        ax=ax,
+        shrink=0.7,
+        pad=0.07
+    )
+    cbar_node.set_label("Node Betweenness Centrality", fontsize=10)
+
+    plt.title("Graph Highlighting Nodes Based on Betweenness Centrality")
+    plt.axis("off")
     plt.show()
 
-
-
-def create_subgraph(friends, top_people):
-    '''
-    After computing degree centrality, we filter out top 100 people.
-    '''
-    subgraph = friends.subgraph(top_people)
-    plt.figure(figsize=(10, 8))
-    pos = nx.spring_layout(subgraph)  # Layout for positioning nodes
-    nx.draw(
-        subgraph,
-        pos,
-        with_labels = False,              # Show labels for nodes
-        node_size = 50,                 # Size of nodes
-        node_color ='lightblue',        # Node color
-        font_size = 10,                  # Font size for labels
-        font_weight = 'bold',            # Font weight for labels
-        edge_color = 'gray'              # Edge color
-    )
-    plt.title("Subgraph of Top 100 People", fontsize=16)
-    plt.show()
-
-
-
-
-
-file_path = 'filtered_edges.csv'
-friends = load_data(file_path)  # Load the data
-top_people = degree_centrality(friends)
-create_graph(friends, top_people)
-# node_color = categorize_degree_centrality(top_nodes)
-subgraph = friends.subgraph(top_people)
-# plot_categorized_heatmap(friends, node_color) # include all nodes
-# plot_categorized_heatmap(subgraph, node_color) # only top_node (~2000)
-
-# print(closeness_centrality(friends,top_people))
+visualize_betweenness_centrality(G)
