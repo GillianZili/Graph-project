@@ -2,8 +2,65 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from data_cleaning import load_data
+import random
 
+
+def initialize_counts(total_rows):
+    """
+    Calculates the portion of each value (0-6) such that the total counts do not exceed total_rows.
+    """
+    # Define proportions for each value
+    proportions = {
+        0: 0.18,
+        1: 0.16,
+        2: 0.19,
+        3: 0.12,
+        4: 0.13,
+        5: 0.17
+    }
+
+    counts = {value: int(total_rows * proportion) for value, proportion in proportions.items()}
+
+    # Assign remaining rows to value 6
+    counts[6] = total_rows - sum(counts.values())
+
+    # Ensure no group exceeds the total number of rows
+    for value in counts:
+        counts[value] = min(counts[value], total_rows)
+
+    # Ensure the sum of counts matches total_rows by reducing excess
+    while sum(counts.values()) > total_rows:
+        for value in sorted(counts.keys(), reverse=True):  # Adjust higher groups first
+            if counts[value] > 0:
+                counts[value] -= 1
+                if sum(counts.values()) <= total_rows:
+                    break
+
+    return counts
+
+def add_random_col(input_file, output_file):
+
+    df = pd.read_csv(input_file)
+    if df.empty or len(df.columns) < 1:
+        raise ValueError("Input CSV must have at least one column.")
+    
+    total_rows = len(df)
+
+    counts = initialize_counts(total_rows)
+    
+    values = []
+    for value, count in counts.items():
+        values.extend([value] * count)
+    
+    # Shuffle the values to randomize their order
+    random.shuffle(values)
+    
+    # Add the new column to the DataFrame
+    df['Random_Variable'] = values
+    
+    # Save the updated DataFrame to the output file
+    df.to_csv(output_file, index=False)
+    print(f"Updated CSV saved to {output_file}")
 
 
 def load_data(node_interest_file, edge_file):
@@ -56,85 +113,6 @@ def connect_groups(G, nodes_with_interests):
                     if not G.has_edge(node1, node2):  # Avoid duplicate edges
                         G.add_edge(node1, node2)
 
-# def calculate_betweenness_with_interests(nodes_with_interests, edges):
-    # """
-    # Calculates betweenness centrality for a graph where nodes have interests.
-    
-    # Args:
-    #     nodes_with_interests (list of tuples): A list where each tuple is (node, interest).
-    #     edges (list of tuples): A list of edges as (node1, node2).
-        
-    # Returns:
-    #     dict: A dictionary where keys are node interests (0-6) and values are lists of tuples
-    #           (node, betweenness centrality).
-    # """
-    # # Create the graph
-    # G = nx.Graph()
-    
-    # # Add nodes with interests
-    # for node, interest in nodes_with_interests:
-    #     G.add_node(node, interest=interest)
-    
-    # # Add edges
-    # G.add_edges_from(edges)
-    
-    # # Calculate betweenness centrality
-    # betweenness = nx.betweenness_centrality(G)
-
-    # # Group centrality scores by interests
-    # interests_centrality = {i: [] for i in range(7)}  # Assuming interests are 0-6
-    # for node, centrality in betweenness.items():
-    #     interest = G.nodes[node].get('interest', None)
-    #     if interest is not None:
-    #         interests_centrality[interest].append((node, centrality))
-
-   
-
-    # return interests_centrality
-
-
-def main(node_interest_file, edge_file):
-    # Load data from CSV files
-    nodes_with_interests, edges = load_data(node_interest_file, edge_file)
-
-    # Create the graph
-    G = nx.Graph()
-
-    # Add nodes with interests
-    G.add_nodes_from([(node, {'interest': interest}) for node, interest in nodes_with_interests])
-
-    # Add edges from the edge file
-    G.add_edges_from(edges)
-
-    # Connect groups based on specified rules
-    connect_groups(G, nodes_with_interests)
-
-    # Calculate betweenness centrality grouped by interests
-    betweenness = nx.betweenness_centrality(G)
-
-    # Group centrality scores by interests
-    interests_centrality = {i: [] for i in range(7)}  # Assuming interests are 0-6
-    for node, centrality in betweenness.items():
-        interest = G.nodes[node].get('interest', None)
-        if interest is not None:
-            interests_centrality[interest].append((node, centrality))
-
-    # Print results
-    for interest, centralities in interests_centrality.items():
-        print(f"Interest {interest}:")
-        for node, centrality in centralities:
-            print(f"  Node {node}: Betweenness Centrality = {centrality:.4f}")
-
- 
-
-# Example usage
-node_interest_file = '/Users/tzuying/Desktop/CS5002_final project/selected_nodes_intetests.csv'  # Replace with your actual file path
-edge_file = '/Users/tzuying/Desktop/CS5002_final project/selected_nodes_edges_file.csv'  # Replace with your actual file path
-
-G, _, _ = load_data(node_interest_file, edge_file)
-# main(node_interest_file, edge_file)
-
-
 
 def visualize_betweenness_centrality(graph):
     """
@@ -177,15 +155,106 @@ def visualize_betweenness_centrality(graph):
     # Add colorbar for node betweenness centrality
     ax = plt.gca()  # Get current axes
     cbar_node = plt.colorbar(
-        plt.cm.ScalarMappable(cmap=plt.cm.Reds, norm=plt.Normalize(vmin=min(node_centrality.values()), vmax=max_node_centrality)),
+        plt.cm.ScalarMappable(cmap=plt.cm.Reds, norm=plt.Normalize(vmin=(min(node_centrality.values())), vmax=max_node_centrality)),
         ax=ax,
         shrink=0.7,
         pad=0.07
     )
+
     cbar_node.set_label("Node Betweenness Centrality", fontsize=10)
 
-    plt.title("Graph Highlighting Nodes Based on Betweenness Centrality")
+    plt.title("Heatmap of Betweenness Centrality")
     plt.axis("off")
+    plt.axis('equal')
     plt.show()
 
-visualize_betweenness_centrality(G)
+
+
+def btw_centrality(node_interest_file, edge_file):
+  
+    G, nodes_with_interests, edges = load_data(node_interest_file, edge_file)
+
+
+    G = nx.Graph()
+
+    G.add_nodes_from([(node, {'interest': interest}) for node, interest in nodes_with_interests])
+    G.add_edges_from(edges)
+
+    # Connect groups based on specified rules
+    connect_groups(G, nodes_with_interests)
+
+    # Calculate betweenness centrality grouped by interests
+    betweenness = nx.betweenness_centrality(G)
+
+    # Group centrality scores by interests
+    interests_centrality = {i: [] for i in range(7)}  
+    for node, centrality in betweenness.items():
+        interest = G.nodes[node].get('interest', None)
+        if interest is not None:
+            interests_centrality[interest].append((node, centrality))
+
+    # Print results
+    for interest, centralities in interests_centrality.items():
+        print(f"Interest {interest}:")
+        for node, centrality in centralities:
+            print(f"  Node {node}: Betweenness Centrality = {centrality:.4f}")
+
+ 
+def main():
+
+    add_random_col('selected_nodes.csv', 'selected_nodes_intetests.csv')
+    node_interest_file = 'selected_nodes_intetests.csv'
+    edge_file = 'selected_nodes_edges.csv'
+
+
+    G, _, _ = load_data(node_interest_file, edge_file)
+    btw_centrality(node_interest_file, edge_file)
+    visualize_betweenness_centrality(G)
+
+
+main()
+
+
+# def calculate_betweenness_with_interests(nodes_with_interests, edges):
+    # """
+    # Calculates betweenness centrality for a graph where nodes have interests.
+    
+    # Args:
+    #     nodes_with_interests (list of tuples): A list where each tuple is (node, interest).
+    #     edges (list of tuples): A list of edges as (node1, node2).
+        
+    # Returns:
+    #     dict: A dictionary where keys are node interests (0-6) and values are lists of tuples
+    #           (node, betweenness centrality).
+    # """
+    # # Create the graph
+    # G = nx.Graph()
+    
+    # # Add nodes with interests
+    # for node, interest in nodes_with_interests:
+    #     G.add_node(node, interest=interest)
+    
+    # # Add edges
+    # G.add_edges_from(edges)
+    
+    # # Calculate betweenness centrality
+    # betweenness = nx.betweenness_centrality(G)
+
+    # # Group centrality scores by interests
+    # interests_centrality = {i: [] for i in range(7)}  # Assuming interests are 0-6
+    # for node, centrality in betweenness.items():
+    #     interest = G.nodes[node].get('interest', None)
+    #     if interest is not None:
+    #         interests_centrality[interest].append((node, centrality))
+
+   
+
+    # return interests_centrality
+
+
+
+
+
+# # Example usage
+# node_interest_file = '/Users/tzuying/Desktop/CS5002_final project/selected_nodes_intetests.csv'  # Replace with your actual file path
+# edge_file = '/Users/tzuying/Desktop/CS5002_final project/selected_nodes_edges_file.csv'  # Replace with your actual file path

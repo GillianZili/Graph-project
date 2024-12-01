@@ -171,3 +171,5 @@ def visualize_graph(G, color_map, pos):
 G, group = create_node_edge_graph('selected_nodes_intetests.csv')
 color_map, pos = color_position(G, group)
 visualize_graph(G, color_map, pos)
+
+print('hi')

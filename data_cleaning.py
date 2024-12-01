@@ -14,8 +14,8 @@ friend_all = pd.read_csv('edges.csv', skiprows=1, header=None)
 def node_filter(friends):
     isolates = list(nx.isolates(friends))
     non_isolates = list(set(friends.nodes) - set(isolates))
-    high_degree_nodes = [node for node in non_isolates if friends.degree[node] > 1000]
-    mid_degree_nodes = [node for node in non_isolates if 30 < friends.degree[node] <= 1000]
+    high_degree_nodes = [node for node in non_isolates if friends.degree[node] > 200]
+    mid_degree_nodes = [node for node in non_isolates if 30 < friends.degree[node] <= 200]
     low_degree_nodes = [node for node in non_isolates if friends.degree[node] <= 30]
     high_degree_sample = random.sample(high_degree_nodes, min(len(high_degree_nodes), 200)) 
     mid_degree_sample = random.sample(mid_degree_nodes, min(len(mid_degree_nodes), 400))    
@@ -23,14 +23,12 @@ def node_filter(friends):
     selected_nodes = set(high_degree_sample + mid_degree_sample + low_degree_sample)
     selected_nodes = set(map(int, selected_nodes))
 
-    # print(f'high: {high_degree_sample}')
-    # print(f'mid: {mid_degree_sample}')
-    # print(f'low: {low_degree_sample}')
+
     return selected_nodes
 
 
 
-def save_selected_nodes_to_csv(selected_nodes, filename="selected_nodes.csv", limit = 50):
+def save_selected_nodes_to_csv(selected_nodes, filename="selected_nodes.csv", limit = 100):
     '''Used for shared interests graph'''
     selected_nodes = list(selected_nodes)
 
@@ -84,10 +82,12 @@ def main():
     interest_mle = set(interest_tag[interest_tag.iloc[:, 1] == 1].iloc[:, 0])
     friends_interest_in_mle_path=edge_filter(interest_mle,'interest_mle')
     friends_interest_in_mle = load_data(friends_interest_in_mle_path)
+    
     save_selected_nodes_to_csv(strat_sampling)
     
     target_nodes = save_selected_nodes_to_csv(strat_sampling)
-    target_edges_file = edge_filter(target_nodes,'target_edges_file')
+    selected_nodes_edges = edge_filter(target_nodes,'selected_nodes_edges.csv')
+    print(selected_nodes_edges)
 
     degree_data(friends_interest_in_mle)
 
