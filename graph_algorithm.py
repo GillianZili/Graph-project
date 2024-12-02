@@ -1,5 +1,5 @@
 import heapq
-from data_cleaning import graph
+from data_cleaning_adj_list import graph
 
 
 def dijkstra(graph, source):
