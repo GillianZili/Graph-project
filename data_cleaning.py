@@ -7,7 +7,6 @@ import csv
 We filter out people with common interests, and extract their connections from the raw data.
 '''
 
-interest_tag = pd.read_csv('shared_interest.csv', skiprows=1, header=None)
 friend_all = pd.read_csv('edges.csv', skiprows=1, header=None)
 
 
@@ -28,7 +27,7 @@ def node_filter(friends):
 
 
 
-def save_selected_nodes_to_csv(selected_nodes, filename="selected_nodes.csv", limit = 100):
+def save_selected_nodes_to_csv(selected_nodes, filename="selected_nodes.csv", limit = 200):
     '''Used for shared interests graph'''
     selected_nodes = list(selected_nodes)
 
@@ -77,18 +76,12 @@ def main():
     
     strat_sampling=node_filter(load_data('edges.csv'))
     edge_filter(strat_sampling,'startified_sampling')
-    
-    # filter the people who have the same interest(#1)
-    interest_mle = set(interest_tag[interest_tag.iloc[:, 1] == 1].iloc[:, 0])
-    friends_interest_in_mle_path=edge_filter(interest_mle,'interest_mle')
-    friends_interest_in_mle = load_data(friends_interest_in_mle_path)
-    
+
     save_selected_nodes_to_csv(strat_sampling)
     
     target_nodes = save_selected_nodes_to_csv(strat_sampling)
-    selected_nodes_edges = edge_filter(target_nodes,'selected_nodes_edges.csv')
+    selected_nodes_edges = edge_filter(target_nodes,'selected_nodes_edges')
     print(selected_nodes_edges)
 
-    degree_data(friends_interest_in_mle)
 
 main()

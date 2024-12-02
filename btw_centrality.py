@@ -1,127 +1,201 @@
 import networkx as nx
-import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import random
 
 
-def load_data(file_path):
-    
-    # Open the file and parse the edge list
-    with open(file_path, "r") as Data:
-        next(Data, None)  # Skip the first line (header)
-        friends = nx.parse_edgelist(
-            Data, 
-            delimiter=',', 
-            create_using=nx.Graph(), 
-            nodetype = str  # Change to int if nodes are numeric
-        )
-    return friends
-
-
-def degree_centrality(friends):
-    deg_centrality = nx.degree_centrality(friends)
-    sorted_deg_centrality = sorted(deg_centrality.items(), key=lambda x: x[1], reverse=True)[:200]
-    top_degree_centrality = pd.DataFrame(sorted_deg_centrality, columns=['Name', 'Degree Centrality'])
-    
-    # print(deg_centrality)
-    # return nx.degree_centrality(friends)
-    return top_degree_centrality['Name'].tolist() #必留
-
-
-def betweenness_centrality(friends):
-   
-    # subgraph =  friends.subgraph(top_people)
-    betweenness_centrality = nx.betweenness_centrality(friends)
-    sorted_betweenness_centrality = sorted(betweenness_centrality.items(), key=lambda x: x[1], reverse=True)[:50]
-    top_betweenness_centrality = pd.DataFrame(sorted_betweenness_centrality, columns=['Name', 'Betweenness Centrality'])
-    
-    # print("Betweenness centrality calculated for top 50 people!")
-    # print(top_betweenness_centrality)
-    top_betweenness_centrality.to_csv('top_betweenness_centrality.csv', index=False)
-
-    return top_betweenness_centrality
-    return nx.betweenness_centrality(friends)
-
-
-
-
-def categorize_btw_centrality(deg_centrality):
+def initialize_counts(total_rows):
     """
-    Categorize nodes by degree centrality into 5 equal ranges and assign colors.
-
-    Returns:
-    - node_colors: Dictionary of node -> color based on degree centrality ranges.
+    Calculates the portion of each value (0-6) such that the total counts do not exceed total_rows.
     """
-   
-    categories = {
-        'red': (0.1, float('inf')),      
-        'lightgreen': (0.001, 0.1),
-        'lightblue': (0.0001, 0.001),
-        'gray': (0, 0.0001)
+    # Define proportions for each value
+    proportions = {
+        0: 0.43, # one common interest
+        1: 0.32, # two common interests
     }
 
+    counts = {value: int(total_rows * proportion) for value, proportion in proportions.items()}
+
+    # Assign remaining rows to value 6
+    counts[2] = total_rows - sum(counts.values()) # three common interests
+
+    # Ensure no group exceeds the total number of rows
+    for value in counts:
+        counts[value] = min(counts[value], total_rows)
+
+    # Ensure the sum of counts matches total_rows by reducing excess
+    while sum(counts.values()) > total_rows:
+        for value in sorted(counts.keys(), reverse=True):  # Adjust higher groups first
+            if counts[value] > 0:
+                counts[value] -= 1
+                if sum(counts.values()) <= total_rows:
+                    break
+
+    return counts
+
+def add_random_col(input_file, output_file):
+
+    df = pd.read_csv(input_file)
+    if df.empty or len(df.columns) < 1:
+        raise ValueError("Input CSV must have at least one column.")
     
-    # Categorize nodes based on centrality
-    node_colors = {}
-    for node, centrality in deg_centrality.items():
-        for color, (low, high) in categories.items():
-            if low <= centrality < high:
-                node_colors[node] = color
-                break
+    total_rows = len(df)
 
-    return node_colors
+    counts = initialize_counts(total_rows)
+    
+    values = []
+    for value, count in counts.items():
+        values.extend([value] * count)
+    
+ 
+    random.shuffle(values)
+    
+    # Add the new column to the DataFrame
+    df['interest'] = values
+    
+    # Save the updated DataFrame to the output file
+    df.to_csv(output_file, index=False)
+    print(f"Updated CSV saved to {output_file}")
 
 
+def load_data(node_interest_file, edge_file):
 
-def plot_categorized_heatmap(friends, source_node):
+    # Load node-interest data
+    node_interest_df = pd.read_csv(node_interest_file)
+    nodes_with_interests = list(zip(node_interest_df['Node'], node_interest_df['Random_Variable']))
+
+    # Load edge data
+    edge_df = pd.read_csv(edge_file)
+    edges = list(zip(edge_df.iloc[:, 0], edge_df.iloc[:, 1]))
+
+    G = nx.Graph()
+    for node, interest in nodes_with_interests:
+        G.add_node(node, interest=interest)
+
+    # Add edges
+    G.add_edges_from(edges)
+    return G, nodes_with_interests, edges
+    
+
+def calculate_betweenness_with_interests(edges_file, interests_file):
     """
-    Plot a graph with nodes colored by categorized degree centrality.
+    Calculate betweenness centrality for nodes based on their relationships
+    and group by interests.
     """
-    
+    # load data and use the selected nodes, edges to create a subgraph
+    edges_df = pd.read_csv(edges_file, header=None, names=["source", "target"])
+    subgraph = nx.Graph()
+    subgraph.add_edges_from(zip(edges_df["source"], edges_df["target"]))
+    subgraph = nx.relabel_nodes(subgraph, str)
+    interests_df = pd.read_csv(interests_file, header=None, names=["node", "interest"])
 
-    btw_centrality = betweenness_centrality(friends)
-    node_colors = categorize_btw_centrality(btw_centrality)
-    
-    colors = [node_colors.get(node) for node in friends.nodes()]
-    sizes = [100 if color in ['red', 'green', 'blue'] else 10 for color in colors]
-    
 
-    plt.figure(figsize=(12, 10))
-    pos = nx.spring_layout(friends, pos={source_node: (0, 0)}, fixed=[source_node])
-    nx.draw(
-        friends,
+    # If two nodes have share interests, weight their edges.
+    for _, row in interests_df.iterrows():
+        node = row["node"]
+        interest = row["interest"]
+        if subgraph.has_node(node):
+            subgraph.nodes[node]["interest"] = interest
+
+        # Ensure all nodes have valid interests
+    for node in subgraph.nodes():
+        if "interest" not in subgraph.nodes[node]:
+            subgraph.nodes[node]["interest"] = -1  # Default interest
+
+    # Assign weights to edges
+    for u, v in subgraph.edges():
+        interest_u = int(subgraph.nodes[u].get("interest"))
+        interest_v = int(subgraph.nodes[v].get("interest"))
+        
+        
+        if interest_u == 0 and interest_v == 0:
+            subgraph[u][v]["weight"] = 0.8
+        elif interest_u == 1 and interest_v == 1:
+            subgraph[u][v]["weight"] = 0.5
+        elif interest_u == 2 and interest_v == 2:
+            subgraph[u][v]["weight"] = 0.2      
+        else:
+            subgraph[u][v]["weight"] = 1  # Default weight
+
+
+    for u, v, attr in subgraph.edges(data=True):
+        print(f"Edge ({u}, {v}): Weight = {attr['weight']}")
+
+
+   
+    betweenness_centrality = nx.betweenness_centrality(subgraph, weight="weight")
+
+    # create a csv file to store btw centrality data in descending
+    sorted_btw = [(node, centrality) for node, centrality in betweenness_centrality.items() if centrality > 0]
+    sorted_btw = sorted(sorted_btw, key=lambda x: x[1], reverse=True)
+    btw_table = pd.DataFrame(sorted_btw, columns=['Node', 'Betweenness Centrality'])
+    btw_table.to_csv('top_betweenness_centrality.csv', index=False)
+    print('successfully create a btw csv file')
+
+    print(btw_table.head())
+    return btw_table
+
+
+def visualize_betweenness_by_interest(graph, btw_data, interest=None):
+    
+    graph = nx.relabel_nodes(graph, str)
+    centrality_dict = dict(zip(btw_data['Node'], btw_data['Betweenness Centrality']))
+
+    max_centrality = max(centrality_dict.values()) if centrality_dict else 1
+    node_sizes = [500 * (centrality_dict.get(node, 0) / max_centrality + 0.1) for node in graph.nodes()]
+    node_colors = [centrality_dict.get(node, 0) for node in graph.nodes()]
+
+
+    plt.figure(figsize=(12, 8))
+    pos = nx.spring_layout(graph, seed=42)
+
+    nx.draw_networkx_edges(
+        graph,
         pos,
-        with_labels = False,
-        node_color=colors,
-        node_size= sizes,
-        font_size=10,
-        font_weight='bold',
-        edge_color='white'
+        edge_color="gray",
+        width=1.0
     )
-    red_nodes = [node for node, color in zip(friends.nodes(), colors) if color == 'red']
-    labels = {node: node for node in red_nodes}  # Use node IDs as labels
-    nx.draw_networkx_labels(friends, pos, labels, font_size=12, font_color='black', font_weight='bold')
 
-    # Add legend
-    legend_labels = {
-        'red': 'above 0.005',   # Highest group
-        'green': '0.001 - 0.005',
-        'blue': '0.0001 - 0.001',
-        'gray': 'below 0.0001'      # Lowest group
-    }
+    nx.draw_networkx_nodes(
+        graph,
+        pos,
+        node_color=node_colors,
+        node_size=node_sizes,
+        cmap=plt.cm.Reds
+    )
 
-    for color, label in legend_labels.items():
-        plt.scatter([], [], c=color, label=label, s=100)  # Add dummy points for legend
+    # Add colorbar for node betweenness centrality
+    ax = plt.gca()  # Get current axes
+    cbar_node = plt.colorbar(
+        plt.cm.ScalarMappable(cmap=plt.cm.Reds, norm=plt.Normalize(vmin=min(centrality_dict.values(), default=0), vmax=max_centrality)),
+        ax=ax,
+        shrink=0.7,
+        pad=0.07
+    )
 
-    plt.legend(scatterpoints=1, frameon=True, labelspacing=1, title="Betweenness Centrality Ranges")
-    plt.title("Categorized Heat Map of Nodes by Betweenness Centrality", fontsize=16)
+    cbar_node.set_label("Node Betweenness Centrality", fontsize=10)
+
+    title = f"Betweenness Centrality Visualization" + (f" (Interest {interest})" if interest is not None else "")
+    plt.title(title)
+    plt.axis("off")
+    plt.axis('equal')
     plt.show()
 
 
 
+def main():
 
-file_path = 'filtered_edges.csv'
-friends = load_data(file_path) 
-top_people = degree_centrality(friends)
+    add_random_col('selected_nodes.csv', 'selected_nodes_intetests.csv')
+    node_interest_file = 'selected_nodes_intetests.csv'
+    edge_file = 'filtered_edges_selected_nodes_edges.csv'
+    btw_data = calculate_betweenness_with_interests(edge_file, node_interest_file)
 
-subgraph = friends.subgraph(top_people)
-print(betweenness_centrality(subgraph))
+    edges_df = pd.read_csv(edge_file, header=None, names=["source", "target"])
+    graph = nx.Graph()
+    graph.add_edges_from(zip(edges_df["source"], edges_df["target"]))
+
+    visualize_betweenness_by_interest(graph, btw_data)
+
+main()
+
