@@ -2,25 +2,40 @@ from pandas import *
 import matplotlib.pyplot as plt
 import bisect
 
-data_edge=read_csv('musae_git_edges.csv')
-data_node=read_csv('musae_git_target.csv')
+all_edge=read_csv('musae_git_edges.csv')
+all_node=read_csv('musae_git_target.csv')
+num_of_allNodes=all_node['id'].to_list()
+all_edge_from=all_edge['id_1'].to_list()
+all_edge_to=all_edge['id_2'].to_list()
 
-num_of_nodes=data_node['id'].to_list()
-edge_from=data_edge['id_1'].to_list()
-edge_to=data_edge['id_2'].to_list()
+sampling_edge=read_csv('filtered_edges_startified_sampling.csv')
+sampling_node=read_csv('selected_nodes.csv')
+print(len(sampling_node))
+num_of_samplingNodes=sampling_node['Node'].to_list()
+spl_edge_from=sampling_edge['0'].to_list()
+spl_edge_to=sampling_edge['1'].to_list()
 
-#create graph
-graph = [[] for _ in range(len(num_of_nodes))]
-for i in range(len(edge_from)):
-    u = edge_from[i]
-    v = edge_to[i]
-    w = 1
-    graph[u].append((v,w))
+def createGraph(num_of_nodes,edge_from,edge_to):
+    graph = {}
+    for i in range(len(edge_from)):
+        u = edge_from[i]
+        v = edge_to[i]
+        w = 1
+        if u not in graph:
+            graph[u] = []
+        if v not in graph:
+            graph[v] = []
+        graph[u].append((v, w))
+    
+    return graph
 
-#create bar chart of numbers of followers
+whole_graph=createGraph(num_of_allNodes,all_edge_from,all_edge_to)
+strif_spl_graph=createGraph(num_of_samplingNodes,spl_edge_from,spl_edge_to)
+
+# create bar chart of numbers of followers
 nums_of_followers=[]
-for i in range(len(graph)):
-    nums_of_followers.append(len(graph[i]))
+for i in range(len(whole_graph)):
+    nums_of_followers.append(len(whole_graph[i]))
 nums_of_followers.sort()
 
 # use binary search to fasten the calculation
