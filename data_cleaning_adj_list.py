@@ -24,7 +24,7 @@ for i in range(len(graph)):
 nums_of_followers.sort()
 
 # use binary search to fasten the calculation
-bar_categories=[0,20,30,40,60,80,100,500,1000]
+bar_categories=[0,20,30,40,60,80,100,200,500,1000]
 bar_value=[0]*len(bar_categories)
 for num in nums_of_followers:
     idx = bisect.bisect_left(bar_categories, num)  
