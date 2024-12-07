@@ -54,14 +54,17 @@ def average_shortest_path_from_source(graph, source,func):
 
 
 def main():
-    # d1=average_shortest_path_from_source(whole_graph,16726,dijkstra)
-    # d2=average_shortest_path_from_source(whole_graph,27803,dijkstra)
-    # d3=average_shortest_path_from_source(whole_graph,141,dijkstra)
-    # print (f"average_shortest_path:{round((d1+d2+d3)/3,2)}")
+    #test dijkstra
+    d1=average_shortest_path_from_source(whole_graph,16726,dijkstra)
+    d2=average_shortest_path_from_source(whole_graph,27803,dijkstra)
+    d3=average_shortest_path_from_source(whole_graph,141,dijkstra)
+    print (f"average_shortest_path:{round((d1+d2+d3)/3,2)}")
 
+    #test floyd_warshall
     max_1, max_2 = floyd_warshall(strif_spl_graph)
     print(f"The two most frequently passed nodes are: {max_1} and {max_2}")
 
 main()
 
+ 
  
